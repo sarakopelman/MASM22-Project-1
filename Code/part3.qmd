@@ -1,0 +1,343 @@
+---
+title: "Part 3"
+format: html
+editor: visual
+---
+
+# Project 1 — Part 3
+
+```{r}
+library(readxl)
+library(tidyverse)
+library(magrittr)
+
+data <- read_excel("../Data/carotene.xlsx")
+head(data)
+summary(data)
+```
+
+## 3a
+
+```{r}
+data$sex %<>%
+  factor %>%
+  fct_recode(male = "1", 
+             female = "2") %>%
+  relevel(ref = "female")
+
+# Frequency of Sex in Sample
+data$sex %>% fct_count(prop=TRUE) %>%
+  print()
+
+data$vituse %<>%
+  factor %>%
+  fct_recode(often = "1", 
+             sometimes = "2",
+             never = "3") %>%
+  relevel(ref = "never")
+
+
+# Frequency of Vitamin Use in Sample
+data$vituse %>% fct_count(prop=TRUE) %>%
+  print()
+```
+
+The sample is predominently female, so it should be used as a reference level. Regarding vitamin use, 'often' and 'never' have about the same number of samples; we pick 'never' as a reference level, as it makes the interpretation of effects easier. We will then directly estimate the effect of using vitamins sometimes or often.
+
+## 3b
+
+```{r}
+cor_matrix <- data %>% select(-sex, -smokstat, -vituse, -betaplasma) %>%
+  cor
+
+indices <- which((abs(cor_matrix) > 0.6 & abs(cor_matrix) < 1) == TRUE, arr.ind = TRUE)
+
+# Get names of covariates with |corr| > 0.6 and remove symetric duplicates
+result <- data.frame(
+  Variable1 = rownames(cor_matrix)[indices[, 1]],
+  Variable2 = colnames(cor_matrix)[indices[, 2]],
+  Correlation = cor_matrix[indices]
+)
+result <- result[!duplicated(t(apply(result, 1, sort))), ]
+
+print(result)
+```
+
+```{r}
+library(ggplot2)
+library(patchwork)
+
+# Assuming 'data' is your data frame
+p1 <- data %>% ggplot(aes(x = fat, y = calories)) +
+  geom_point() +
+  ggtitle("Fat vs Calories")
+
+p2 <- data %>% ggplot(aes(x = cholesterol, y = calories)) +
+  geom_point() +
+  ggtitle("Cholesterol vs Calories")
+
+p3 <- data %>% ggplot(aes(x = cholesterol, y = fat)) +
+  geom_point() +
+  ggtitle("Cholesterol vs Fat")
+
+# Combine using patchwork
+combined_plot <- p1 |  (p2 / p3)  
+
+# Display the combined plot
+print(combined_plot)
+```
+
+We see an outlier consuming way more calories than average, with high cholesterol and fat intake, but not extreme.
+
+```{r}
+data %>% ggplot(aes(x = alcohol, y = calories)) +
+  geom_point()
+```
+
+This level of alcohol consumption is extreme, but might not be an error because of the correspondingly high calorie intake.
+
+## 3c
+
+```{r}
+library(performance)
+
+model <- lm(log(betaplasma) ~ ., data = data)
+summary(model)
+
+performance::check_collinearity(model)
+```
+
+More than 80 % of the information provided by a covariate can be explained by the rest when $R^2_j > 0.8^2$ and $VIF_j > 1/(1 - 0.8^2) \approx 2.8$. This is the case for fat (VIF 8.16) and calorie (VIF 13.20) intake. Not suprising that calorie intake is correlated with fat, fiber, and alcohol consumption. We refit without calorie intake:
+
+```{r}
+model <- lm(log(betaplasma) ~ . - calories, data = data)
+summary(model)
+performance::check_collinearity(model)
+```
+
+All VIF/GVIF ok now, even for fat intake!
+
+## 3d
+
+```{r}
+# Log-parameters
+results <- as.data.frame(cbind(
+  model$coefficients,
+  confint(model)
+))
+colnames(results) <- c("Estimate", "2.5 %", "97.5 %")
+
+print(results)
+print(exp(results))
+```
+
+### Testing
+
+$$
+H_0: \beta_\text{BMI} = 0 \\
+H_1: \beta_\text{BMI} \neq 0
+$$
+
+A t-test is automatically done for us with $n - p - 1 =315 - 12 = 303$ degrees of freedom.
+
+```{r}
+summary(model)
+```
+
+We have $t = -4.91 \sim t(303)$ under the null, which yields a p-value of \$1.53 \\times 10\^{-6}\$. We reject the null; BMI has a significant effect on log-beta plasma levels.
+
+Second, we test whether the model is significantly better than that from 1b `log(betaplasma) ~ bmi`. Partial F-test of hypothesis
+
+$$
+H_0: \beta_\text{-BMI} = 0 \\
+H_1: \beta_\text{-BMI} \neq 0
+$$
+
+where $\beta_\text{-BMI}$ denotes all parameters except for $\beta_\text{BMI}$ and $\beta_0$.
+
+```{r}
+red_model = lm(log(betaplasma) ~ bmi, data = data)
+summary(red_model)
+
+anova(red_model, model)
+```
+
+We have $T = 6.84 \sim F(10, 303)$ under the null, yielding a p-value of \$1.23 \\times 10\^{-9}\$. We reject the null; the model is improved by adding covariates beyond BMI.
+
+Finally, we test whether the full model is signficantly better than that from 2b `log(betaplasma) ~ smokstat`, with 'never' as reference level.
+
+$$
+H_0: \beta_\text{-smokstat} = 0 \\
+H_1: \beta_\text{-smokstat} \neq 0
+$$
+
+```{r}
+data$smokstat %<>%
+  factor %>%
+  fct_recode(never = "1", 
+             former = "2",
+             current = "3") %>%
+  relevel(ref = "never")
+
+red_model = lm(log(betaplasma) ~ smokstat, data = data)
+summary(red_model)
+
+anova(red_model, model)
+```
+
+We have $T = 9.61 \sim F(9, 303)$ under the null, yielding a p-value of \$6.50 \\times 10\^{-13}\$. We reject the null; the model is improved by adding covariates beyond smokstat.
+
+## 3e
+
+```{r}
+pred <- data %>%
+    mutate(yhat = predict(model),
+           r = rstudent(model))
+
+highlightcolors <- c("|r*|>3" = "red")
+
+p1 <- ggplot(pred, aes(x = yhat, y = r)) +
+  geom_point() +
+  geom_hline(yintercept = c(-2, 0, 2)) +
+  geom_hline(yintercept = c(-3, 3), linetype = 2) +
+  geom_point(data = filter(pred, abs(r) > 3), 
+             aes(color = "|r*|>3"), size = 3) +
+  labs(title = "Studentized residuals vs  predictor",
+       color = "Highlight") +
+  scale_color_manual(values = highlightcolors) +
+  theme(legend.position = "bottom")
+
+p2 <- ggplot(pred, aes(x = yhat, y = sqrt(abs(r)))) +
+  geom_point() +
+  geom_hline(yintercept = c(0, sqrt(qnorm(0.75)), sqrt(2))) +
+  geom_hline(yintercept = sqrt(3), linetype = 2) +
+  geom_point(data = filter(pred, abs(r) > 3), 
+             aes(color = "|r*|>3"), size = 3) +
+  labs(title = "Sqrt absolute studentized residuals vs predictor",
+       color = "Highlight") +
+  scale_color_manual(values = highlightcolors) +
+  theme(legend.position = "bottom")
+
+print(p1 | p2)
+```
+
+Looks good! $2 < 315 * 0.05$ proper outliers; seemingly constant variance. No reason to suspect model assumptions.
+
+## 3f
+
+```{r}
+pred <- pred %>%
+    mutate(v = hatvalues(model))
+
+# with 1/n and 2(p+1)/n horizontal lines:
+# p+1 = 
+pplus1 <- length(model$coefficients)
+n <- nobs(model)
+
+ggplot(cbind(pred), aes(x = yhat, y = v)) +
+  geom_point(size = 2) +
+  geom_hline(yintercept = 1/n) +
+  geom_hline(yintercept = 2*pplus1/n, color = "red") +
+  labs(title = "leverage vs log prediction",
+       caption = "y = 1/n (black) and 2(p+1)/n (red)",
+       color = "Highlight") +
+  theme(legend.position = "bottom") +
+  scale_color_manual(values = highlightcolors)
+```
+
+One notable!
+
+```{r}
+pred %>% filter(v > 0.8)
+```
+
+The guy drinking 12 bottles of vodka per week!
+
+## 3g
+
+```{r}
+pred <- pred %>%
+    mutate(D = cooks.distance(model))
+
+f1 <- pplus1
+f2 <- model$df.residual
+cook.limit <- qf(0.5, f1, f2)
+
+ggplot(pred, aes(yhat, D)) + 
+  geom_point(size = 3) +
+  geom_point(data = filter(pred, alcohol > 200),
+             aes(color = "alcohol>200"), size = 3) +
+  geom_hline(yintercept = cook.limit, color = "red") +
+  geom_hline(yintercept = 4/n, linetype = 2, color = "red") +
+  xlab("Fitted values") +
+  ylab("D_i") +
+  labs(title = "Cook's D",
+       caption = "4/n (dashed), F_0.5, p+1, n-(p+1) (solid)",
+       color = "Highlight") +
+  scale_color_manual(values = highlightcolors)
+```
+
+```{r}
+pred %>% filter(D > 0.1)
+```
+
+900 cholesterol consumed per day! Extreme
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+# Define highlight aesthetics
+highlightshapes <- c("Cook's D>0.1" = 24)
+highlightcolors <- c("alcohol>200" = "magenta", "|r*|>3" = "red", "cholesterol>900" = "blue")
+
+# Extract DFBETAS and rename columns
+dfbetas_data <- as.data.frame(dfbetas(model))
+colnames(dfbetas_data) <- paste0("dfbeta_", colnames(dfbetas_data))
+
+# Combine model predictions and DFBETAS
+plot_data <- cbind(pred, dfbetas_data)
+
+# Calculate thresholds
+cook.limit.excl <- 4 / nrow(plot_data)
+n_excl <- nrow(plot_data)
+
+# Generate a plot for each parameter automatically
+params <- colnames(dfbetas_data)
+plots <- lapply(params, function(param) {
+  
+  # Create a temporary column for the current parameter's DFBETAS
+  plot_data$df_val <- plot_data[[param]]
+  
+  ggplot(plot_data, aes(x = yhat, y = df_val)) +
+    geom_point(size = 2) +
+      geom_point(data = filter(plot_data, abs(r) > 3),
+           aes(color = "|r*|>3"), size = 3) +
+    geom_point(data = filter(plot_data, alcohol > 200),
+               aes(color = "alcohol>200"), size = 3) +
+    geom_point(data = filter(plot_data, cholesterol > 850),
+               aes(color = "cholesterol>900"), size = 3) +
+
+    geom_point(data = filter(plot_data, D > 0.1),
+               aes(shape = "Cook's D>0.1"), size = 3) +
+    geom_hline(yintercept = 0) +
+    geom_hline(yintercept = sqrt(cook.limit.excl) * c(-1, 1),
+               color = "red") +
+    geom_hline(yintercept = 2 / sqrt(n_excl) * c(-1, 1),
+               color = "red", linetype = "dashed") +
+    ylab(paste0("DFBETAS for ", param)) +
+    xlab("Fitted values") +
+    labs(title = paste("DFBETAS:", param),
+         caption = "Thresholds: y = sqrt(F_0.5) and 2/sqrt(n)") +
+    theme(legend.position = "bottom") +
+    scale_color_manual(values = highlightcolors) +
+    scale_shape_manual(values = highlightshapes)
+})
+
+# Print each plot
+for (p in plots) {
+  print(p)
+}
+```
+
+The alcohol point with extreme leverage only has significant effect on the $\beta_\text{alcohol}$ parameter. Not suprising, of course! The cholesterol point has much higher leverage and siginificantly effects the intercept, sex_male, smokstat, bmi, vituse_often, fat, cholesterol, and betadiet. Latter much more concerning than former, but neither great.
