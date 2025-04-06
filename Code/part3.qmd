@@ -343,7 +343,7 @@ for (p in plots) {
 
 The alcohol point with extreme leverage only has significant effect on the $\beta_\text{alcohol}$ parameter. Not suprising, of course! The cholesterol point has much higher leverage and siginificantly effects the intercept, sex_male, smokstat, bmi, vituse_often, fat, cholesterol, and betadiet. Latter much more concerning than former, but neither great.
 
-```{r}
+```{r, eval=FALSE}
 # Use purl to extract R code and save it as an R script
 knitr::purl("part3.qmd", output = "part3.R")
 ```
