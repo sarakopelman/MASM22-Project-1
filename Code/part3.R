@@ -2,8 +2,9 @@
 library(readxl)
 library(tidyverse)
 library(magrittr)
-
-data <- read_excel("../Data/carotene.xlsx")
+#Set directory to project
+setwd(rprojroot::find_rstudio_root_file())
+data <- read_excel("Data/carotene.xlsx")
 head(data)
 summary(data)
 
@@ -267,4 +268,9 @@ plots <- lapply(params, function(param) {
 for (p in plots) {
   print(p)
 }
+
+
+## ------------------------------------------------------
+# Use purl to extract R code and save it as an R script
+knitr::purl("part3.qmd", output = "part3.R")
 
