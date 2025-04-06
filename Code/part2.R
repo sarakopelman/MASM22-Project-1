@@ -24,7 +24,7 @@ ggplot(carotene, aes(x = smokstat, y = betaplasma, color = smokstat)) +
 
 ggplot(carotene, aes(x = smokstat, y = log(betaplasma), color = smokstat)) +
   geom_boxplot() +
-  labs(x = "Smoking status", y="Plasma β-carotene (ng/ml)",
+  labs(x = "Smoking status", y="Log Plasma β-carotene (ng/ml)",
        color = "Smoking Status")
 #Fit models
 #Model 2b
