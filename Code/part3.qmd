@@ -10,8 +10,9 @@ editor: visual
 library(readxl)
 library(tidyverse)
 library(magrittr)
-
-data <- read_excel("../Data/carotene.xlsx")
+#Sewt directory to project
+setwd(rprojroot::find_rstudio_root_file())
+data <- read_excel("Data/carotene.xlsx")
 head(data)
 summary(data)
 ```
