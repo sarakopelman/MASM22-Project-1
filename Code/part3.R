@@ -2,7 +2,7 @@
 library(readxl)
 library(tidyverse)
 library(magrittr)
-#Set directory to project
+#Sewt directory to project
 setwd(rprojroot::find_rstudio_root_file())
 data <- read_excel("Data/carotene.xlsx")
 head(data)
@@ -270,7 +270,7 @@ for (p in plots) {
 }
 
 
-## ------------------------------------------------------
-# Use purl to extract R code and save it as an R script
-knitr::purl("part3.qmd", output = "part3.R")
+## ----eval=FALSE----------------------------------------
+# # Use purl to extract R code and save it as an R script
+# knitr::purl("part3.qmd", output = "part3.R")
 
