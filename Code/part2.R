@@ -54,3 +54,6 @@ cbind(carotene_x0, fit=predict(model2b_alt,newdata=carotene_x0),
   carotene_x0_pred_alt
 carotene_x0_pred_alt
 cbind(smokstat=carotene_x0_pred_alt[, 1],exp(carotene_x0_pred_alt[, 2:ncol(carotene_x0_pred_alt)]))
+
+#F-test
+summary(model_2b)
