@@ -1,12 +1,4 @@
----
-title: "Part 3"
-format: html
-editor: visual
----
-
-# Project 1 — Part 3
-
-```{r}
+## ------------------------------------------------------
 library(readxl)
 library(tidyverse)
 library(magrittr)
@@ -15,18 +7,9 @@ setwd(rprojroot::find_rstudio_root_file())
 data <- read_excel("Data/carotene.xlsx")
 head(data)
 summary(data)
-```
 
-## 3a
 
-```{r}
-data$smokstat %<>%
-  factor %>%
-  fct_recode(never = "1", 
-             former = "2",
-             current = "3") %>%
-  relevel(ref = "never")
-
+## ------------------------------------------------------
 data$sex %<>%
   factor %>%
   fct_recode(male = "1", 
@@ -48,13 +31,9 @@ data$vituse %<>%
 # Frequency of Vitamin Use in Sample
 data$vituse %>% fct_count(prop=TRUE) %>%
   print()
-```
 
-The sample is predominently female, so it should be used as a reference level. Regarding vitamin use, 'often' and 'never' have about the same number of samples; we pick 'never' as a reference level, as it makes the interpretation of effects easier. We will then directly estimate the effect of using vitamins sometimes or often.
 
-## 3b
-
-```{r}
+## ------------------------------------------------------
 cor_matrix <- data %>% select(-sex, -smokstat, -vituse, -betaplasma) %>%
   cor
 
@@ -69,27 +48,23 @@ result <- data.frame(
 result <- result[!duplicated(t(apply(result, 1, sort))), ]
 
 print(result)
-```
 
-```{r}
+
+## ------------------------------------------------------
 library(ggplot2)
 library(patchwork)
-
 
 # Assuming 'data' is your data frame
 p1 <- data %>% ggplot(aes(x = fat, y = calories)) +
   geom_point() +
-  geom_point(data = filter(data, alcohol>200), color = "magenta") +
   ggtitle("Fat vs Calories")
 
 p2 <- data %>% ggplot(aes(x = cholesterol, y = calories)) +
   geom_point() +
-    geom_point(data = filter(data, alcohol>200), color = "magenta") +
   ggtitle("Cholesterol vs Calories")
 
 p3 <- data %>% ggplot(aes(x = cholesterol, y = fat)) +
   geom_point() +
-    geom_point(data = filter(data, alcohol>200), color = "magenta") +
   ggtitle("Cholesterol vs Fat")
 
 # Combine using patchwork
@@ -97,57 +72,29 @@ combined_plot <- p1 |  (p2 / p3)
 
 # Display the combined plot
 print(combined_plot)
-```
 
-We see an outlier consuming way more calories than average, with high cholesterol and fat intake, but not extreme.
 
-```{r}
+## ------------------------------------------------------
 data %>% ggplot(aes(x = alcohol, y = calories)) +
   geom_point()
 
-data %>% filter(alcohol > 200)
-```
 
-This level of alcohol consumption is extreme, but might not be an error because of the correspondingly high calorie intake.
-
-## 3c
-
-```{r}
+## ------------------------------------------------------
 library(performance)
 
-model_bad <- lm(log(betaplasma) ~ ., data = data)
-summary(model_bad)
+model <- lm(log(betaplasma) ~ ., data = data)
+summary(model)
 
-performance::check_collinearity(model_bad)
-```
+performance::check_collinearity(model)
 
-More than 80 % of the information provided by a covariate can be explained by the rest when $R^2_j > 0.8^2$ and $VIF_j > 1/(1 - 0.8^2) \approx 2.8$. This is the case for fat (VIF 8.16) and calorie (VIF 13.20) intake. Not suprising that calorie intake is correlated with fat, fiber, and alcohol consumption. We refit without calorie intake:
 
-```{r}
+## ------------------------------------------------------
 model <- lm(log(betaplasma) ~ . - calories, data = data)
 summary(model)
 performance::check_collinearity(model)
-```
 
-All VIF/GVIF ok now, even for fat intake!
 
-```{r}
-vif_bad <- performance::check_collinearity(model_bad) %>% 
-    tibble %>%
-    select(Term, VIF) %>%
-    mutate(VIF = round(VIF, 2))
-
-vif <- performance::check_collinearity(model) %>% 
-    tibble %>%
-    select(Term, VIF) %>%
-    mutate(VIF = round(VIF, 2))
-
-bind_rows(vif_bad, vif) %>% write.csv('~/Downloads/temp.csv')
-```
-
-## 3d
-
-```{r}
+## ------------------------------------------------------
 # Log-parameters
 results <- as.data.frame(cbind(
   model$coefficients,
@@ -157,60 +104,34 @@ colnames(results) <- c("Estimate", "2.5 %", "97.5 %")
 
 print(results)
 print(exp(results))
-```
 
-### Testing
 
-$$
-H_0: \beta_\text{BMI} = 0 \\
-H_1: \beta_\text{BMI} \neq 0
-$$
-
-A t-test is automatically done for us with $n - p - 1 =315 - 12 = 303$ degrees of freedom.
-
-```{r}
+## ------------------------------------------------------
 summary(model)
-```
 
-We have $t = -4.91 \sim t(303)$ under the null, which yields a p-value of \$1.53 \\times 10\^{-6}\$. We reject the null; BMI has a significant effect on log-beta plasma levels.
 
-Second, we test whether the model is significantly better than that from 1b `log(betaplasma) ~ bmi`. Partial F-test of hypothesis
-
-$$
-H_0: \beta_\text{-BMI} = 0 \\
-H_1: \beta_\text{-BMI} \neq 0
-$$
-
-where $\beta_\text{-BMI}$ denotes all parameters except for $\beta_\text{BMI}$ and $\beta_0$.
-
-```{r}
+## ------------------------------------------------------
 red_model = lm(log(betaplasma) ~ bmi, data = data)
 summary(red_model)
 
 anova(red_model, model)
-```
 
-We have $T = 6.84 \sim F(10, 303)$ under the null, yielding a p-value of \$1.23 \\times 10\^{-9}\$. We reject the null; the model is improved by adding covariates beyond BMI.
 
-Finally, we test whether the full model is signficantly better than that from 2b `log(betaplasma) ~ smokstat`, with 'never' as reference level.
+## ------------------------------------------------------
+data$smokstat %<>%
+  factor %>%
+  fct_recode(never = "1", 
+             former = "2",
+             current = "3") %>%
+  relevel(ref = "never")
 
-$$
-H_0: \beta_\text{-smokstat} = 0 \\
-H_1: \beta_\text{-smokstat} \neq 0
-$$
-
-```{r}
 red_model = lm(log(betaplasma) ~ smokstat, data = data)
 summary(red_model)
 
 anova(red_model, model)
-```
 
-We have $T = 9.61 \sim F(9, 303)$ under the null, yielding a p-value of \$6.50 \\times 10\^{-13}\$. We reject the null; the model is improved by adding covariates beyond smokstat.
 
-## 3e
-
-```{r}
+## ------------------------------------------------------
 pred <- data %>%
     mutate(yhat = predict(model),
            r = rstudent(model))
@@ -240,13 +161,9 @@ p2 <- ggplot(pred, aes(x = yhat, y = sqrt(abs(r)))) +
   theme(legend.position = "bottom")
 
 print(p1 | p2)
-```
 
-Looks good! $2 < 315 * 0.05$ proper outliers; seemingly constant variance. No reason to suspect model assumptions.
 
-## 3f
-
-```{r}
+## ------------------------------------------------------
 pred <- pred %>%
     mutate(v = hatvalues(model))
 
@@ -264,19 +181,13 @@ ggplot(cbind(pred), aes(x = yhat, y = v)) +
        color = "Highlight") +
   theme(legend.position = "bottom") +
   scale_color_manual(values = highlightcolors)
-```
 
-One notable!
 
-```{r}
+## ------------------------------------------------------
 pred %>% filter(v > 0.8)
-```
 
-The guy drinking 12 bottles of vodka per week!
 
-## 3g
-
-```{r}
+## ------------------------------------------------------
 pred <- pred %>%
     mutate(D = cooks.distance(model))
 
@@ -296,15 +207,13 @@ ggplot(pred, aes(yhat, D)) +
        caption = "4/n (dashed), F_0.5, p+1, n-(p+1) (solid)",
        color = "Highlight") +
   scale_color_manual(values = highlightcolors)
-```
 
-```{r}
+
+## ------------------------------------------------------
 pred %>% filter(D > 0.1)
-```
 
-900 cholesterol consumed per day! Extreme
 
-```{r}
+## ------------------------------------------------------
 library(ggplot2)
 library(dplyr)
 
@@ -359,11 +268,9 @@ plots <- lapply(params, function(param) {
 for (p in plots) {
   print(p)
 }
-```
 
-The alcohol point with extreme leverage only has significant effect on the $\beta_\text{alcohol}$ parameter. Not suprising, of course! The cholesterol point has much higher leverage and siginificantly effects the intercept, sex_male, smokstat, bmi, vituse_often, fat, cholesterol, and betadiet. Latter much more concerning than former, but neither great.
 
-```{r, eval=FALSE}
-# Use purl to extract R code and save it as an R script
-knitr::purl("part3.qmd", output = "part3.R")
-```
+## ----eval=FALSE----------------------------------------
+# # Use purl to extract R code and save it as an R script
+# knitr::purl("part3.qmd", output = "part3.R")
+
