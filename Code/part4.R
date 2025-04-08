@@ -34,7 +34,29 @@ dummy_df <- as.data.frame(dummy_data)
 dummy_df %>%
   select(where(~length(unique(na.omit(.))) > 1)) %>%  # remove constant columns
   cor_test() %>%
-  filter(var1 < var2) %>%                             # avoid duplicate pairs (A,B) vs (B,A)
+  filter(var1 < var2) %>%                             # avoid duplicate pairs
   arrange(desc(cor))                                  # sort by correlation (descending)
 #calculate VIF
 vif(model_excl)
+#4.b
+##stepwise selection 
+#full dataset
+null_model <- lm(log(betaplasma)~1,data=data)
+full_model <- lm(log(betaplasma)~.,data=data)
+stepmodel_full <- step(null_model, 
+     scope = list(lower = null_model, upper = full_model),
+     direction = "both",
+     k = log(nobs(full_model)))
+
+#reduced dataset
+null_model <- update(null_model, data=newdata)
+full_model <- update(full_model, data=newdata)
+stepmodel_reduced <- step(null_model, 
+                       scope = list(lower = null_model, upper = full_model),
+                       direction = "both",
+                       k = log(nobs(full_model)))
+##Estimates and confidence intervals
+summary(stepmodel_full)
+confint(stepmodel_full)
+summary(stepmodel_reduced)
+confint(stepmodel_reduced)
