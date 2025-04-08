@@ -153,10 +153,15 @@ results <- as.data.frame(cbind(
   model$coefficients,
   confint(model)
 ))
-colnames(results) <- c("Estimate", "2.5 %", "97.5 %")
+colnames(results) <- c("beta_Estimate", "beta_2.5 %", "beta_97.5 %")
 
-print(results)
-print(exp(results))
+exp_results <- exp(results)
+colnames(exp_results) <- c("exp_Estimate", "exp_2.5 %", "exp_97.5 %")
+
+cbind(results, exp_results) %>% 
+    round(3) %>%
+    write.csv('~/Downloads/temp.csv')
+
 ```
 
 ### Testing
