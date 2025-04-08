@@ -19,6 +19,13 @@ summary(data)
 ## 3a
 
 ```{r}
+data$smokstat %<>%
+  factor %>%
+  fct_recode(never = "1", 
+             former = "2",
+             current = "3") %>%
+  relevel(ref = "never")
+
 data$sex %<>%
   factor %>%
   fct_recode(male = "1", 
@@ -67,17 +74,21 @@ print(result)
 library(ggplot2)
 library(patchwork)
 
+
 # Assuming 'data' is your data frame
 p1 <- data %>% ggplot(aes(x = fat, y = calories)) +
   geom_point() +
+  geom_point(data = filter(data, alcohol>200), color = "magenta") +
   ggtitle("Fat vs Calories")
 
 p2 <- data %>% ggplot(aes(x = cholesterol, y = calories)) +
   geom_point() +
+    geom_point(data = filter(data, alcohol>200), color = "magenta") +
   ggtitle("Cholesterol vs Calories")
 
 p3 <- data %>% ggplot(aes(x = cholesterol, y = fat)) +
   geom_point() +
+    geom_point(data = filter(data, alcohol>200), color = "magenta") +
   ggtitle("Cholesterol vs Fat")
 
 # Combine using patchwork
@@ -92,6 +103,8 @@ We see an outlier consuming way more calories than average, with high cholestero
 ```{r}
 data %>% ggplot(aes(x = alcohol, y = calories)) +
   geom_point()
+
+data %>% filter(alcohol > 200)
 ```
 
 This level of alcohol consumption is extreme, but might not be an error because of the correspondingly high calorie intake.
@@ -101,10 +114,10 @@ This level of alcohol consumption is extreme, but might not be an error because 
 ```{r}
 library(performance)
 
-model <- lm(log(betaplasma) ~ ., data = data)
-summary(model)
+model_bad <- lm(log(betaplasma) ~ ., data = data)
+summary(model_bad)
 
-performance::check_collinearity(model)
+performance::check_collinearity(model_bad)
 ```
 
 More than 80 % of the information provided by a covariate can be explained by the rest when $R^2_j > 0.8^2$ and $VIF_j > 1/(1 - 0.8^2) \approx 2.8$. This is the case for fat (VIF 8.16) and calorie (VIF 13.20) intake. Not suprising that calorie intake is correlated with fat, fiber, and alcohol consumption. We refit without calorie intake:
@@ -116,6 +129,20 @@ performance::check_collinearity(model)
 ```
 
 All VIF/GVIF ok now, even for fat intake!
+
+```{r}
+vif_bad <- performance::check_collinearity(model_bad) %>% 
+    tibble %>%
+    select(Term, VIF) %>%
+    mutate(VIF = round(VIF, 2))
+
+vif <- performance::check_collinearity(model) %>% 
+    tibble %>%
+    select(Term, VIF) %>%
+    mutate(VIF = round(VIF, 2))
+
+bind_rows(vif_bad, vif) %>% write.csv('~/Downloads/temp.csv')
+```
 
 ## 3d
 
@@ -172,13 +199,6 @@ H_1: \beta_\text{-smokstat} \neq 0
 $$
 
 ```{r}
-data$smokstat %<>%
-  factor %>%
-  fct_recode(never = "1", 
-             former = "2",
-             current = "3") %>%
-  relevel(ref = "never")
-
 red_model = lm(log(betaplasma) ~ smokstat, data = data)
 summary(red_model)
 
