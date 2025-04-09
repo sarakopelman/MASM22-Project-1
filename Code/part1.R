@@ -82,7 +82,7 @@ ggplot(betaplasma_ints, aes(x = bmi)) +
   ylab("Log Betaplasma (ng/ml)") +
   labs(title = "Log Plasma Beta-Carotene vs Body Mass Index")
 
-# Fitted line in original scale
+# Fitted line with intervals in original scale
 
 betaplasma_seq |> mutate(
   fit = predict(log, newdata = betaplasma_seq),
