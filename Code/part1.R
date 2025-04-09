@@ -1,5 +1,5 @@
-#### Project 1
-### Loading packages and data
+#### Part 1
+# Loading packages and data
 source("Code/load_data.R")
 
 # Creating models
