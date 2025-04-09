@@ -17,15 +17,17 @@ carotene |>
 print(freq_table)  #Never as reference makes most sense
 
 #Boxplots
-ggplot(carotene, aes(x = smokstat, y = betaplasma, color = smokstat)) +
+boxplot <- ggplot(carotene, aes(x = smokstat, y = betaplasma, color = smokstat)) +
   geom_boxplot() +
   labs(x = "Smoking status", y="Plasma β-carotene (ng/ml)",
        color = "Smoking Status")
 
-ggplot(carotene, aes(x = smokstat, y = log(betaplasma), color = smokstat)) +
+boxplot_log <- ggplot(carotene, aes(x = smokstat, y = log(betaplasma), color = smokstat)) +
   geom_boxplot() +
   labs(x = "Smoking status", y="Log Plasma β-carotene (ng/ml)",
        color = "Smoking Status")
+combinedbox <- boxplot + boxplot_log
+#ggsave("combined_boxplot.png", combinedbox, width = 14, height = 10, dpi = 300)
 #Fit models
 #Model 2b
 model2b <- lm(log(betaplasma)~smokstat,data=carotene)
@@ -56,4 +58,5 @@ carotene_x0_pred_alt
 cbind(smokstat=carotene_x0_pred_alt[, 1],exp(carotene_x0_pred_alt[, 2:ncol(carotene_x0_pred_alt)]))
 
 #F-test
-summary(model_2b)
+summary(model2b)
+anova(model2b)
