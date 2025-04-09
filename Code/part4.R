@@ -21,13 +21,14 @@ cook2 <- ggplot(newpred, aes(yhat, D)) +
   geom_hline(yintercept = 4/n,linetype =2, color = "red") +
   xlab("Fitted values") +
   ylab("D_i") +
-  labs(title = "Pb: Cook's D",
-       caption = "4/n (dashed), F_0.5, p+1, n-(p+1) (solid)",
+  labs(title = "Cook's Distance",
+       caption = "y=4/n (dashed)",
        color = "Highlight") +
   scale_color_manual(highlightcolors) #don't need higher limit
 cook1 <- cook2 + geom_hline(yintercept = cook.limit, color = "red")
 cook1
 cook2 #don't need higher limit
+ggsave("p4_cook.png", plot = cook2, width = 8, height = 6, units = "in", dpi = 300)
 #Turn factoprs into dummies to calculate correlation
 dummy_data <- model.matrix(~ . -1, data = newdata)  # -1 removes the intercept column
 dummy_df <- as.data.frame(dummy_data)       
